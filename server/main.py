@@ -131,7 +131,7 @@ def func2():
     hostname = socket.gethostname()
     ip_addr = socket.gethostbyname(hostname)
     print(f"To see the UI open up: http://{ip_addr}:5000/static/")
-    sock = eventlet.wsgi.server(eventlet.listen(('0.0.0.0', 5000)), app)
+    sock = eventlet.wsgi.server(eventlet.listen(('', 5000)), app)
 
 
 if __name__ == "__main__":
