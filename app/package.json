@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "chart.js": "^3.9.1",
-    "socket.io-client": "^4.5.2"
+    "socket.io-client": "^4.5.2",
+    "svelte-chartjs": "^3.0.1",
+    "svelte-loading-spinners": "^0.3.4"
   }
 }

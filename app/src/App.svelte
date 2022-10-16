@@ -1,79 +1,130 @@
 <script>
-	import svelteLogo from "./assets/svelte.svg"
-	import Counter from "./lib/Counter.svelte"
+	// import svelteLogo from "./assets/svelte.svg"
+	// import Counter from "./lib/Counter.svelte"
 	import StatusBar from "./lib/StatusBar.svelte"
 	import StatusIndicator from "./lib/StatusIndicator.svelte"
-	import Chart from "chart.js/auto/auto.js"
+	import Chart from "chart.js/auto"
 	import { io } from "socket.io-client"
 	import { onMount } from "svelte"
+	import Loader from "./lib/Loader.svelte"
+	import Modal from "./lib/Modal.svelte"
 
+	let chartCtx
 	let chart
+	let session
 	let backendReady = false
 	let recording = false
 	let deleteModal = false
+	let showModal = false
 
 	const data = {
-		labels: [1, 2, 3, 4, 5],
 		datasets: [
 			{
-				label: "My First Dataset",
-				data: [0, 1, 2, 3, 4],
+				label: "SPEED",
 				borderColor: "#e22134",
 				fill: false,
 				tension: 0.1,
-				// hoverOffset: 4,
-				// borderWidth: 0,
+			},
+			{
+				label: "THROTTLE_POS",
+				borderColor: "#3498DB",
+				fill: false,
+				tension: 0.1,
+			},
+			{
+				label: "FUEL_LEVEL",
+				borderColor: "#F1C40F",
+				fill: false,
+				tension: 0.1,
+			},
+			{
+				label: "HYBRID_BATTERY_REMAINING",
+				borderColor: "#9B59B6",
+				fill: false,
+				tension: 0.1,
 			},
 		],
 	}
 
-	const config = {
-		type: "line",
-		data: data,
-		options: {
-			borderRadius: "30",
-			responsive: true,
-			cutout: "95%",
-			spacing: 2,
-			plugins: {
-				legend: {
-					position: "bottom",
-					display: true,
-					labels: {
-						usePointStyle: true,
-						padding: 20,
-						font: {
-							size: 14,
-						},
-					},
-				},
-			},
-		},
+	const createChart = () => {
+		data.labels = []
+		data.datasets.forEach((dataset) => {
+			dataset.data = []
+		})
+		const ctx = chartCtx.getContext("2d")
+		// @ts-ignore
+		chart = new Chart(ctx, { type: "line", data: data })
 	}
 
 	onMount(() => {
-		const ctx = chart.getContext("2d")
-		// @ts-ignore
-		let myChart = new Chart(ctx, config)
+		createChart()
 	})
 
-	const toggleRecording = () => {
-		recording = recording ? false : true
+	const addChartData = (data) => {
+		const newDatasets = data.datasets
+		const date = new Date(data.time * 1000)
+		const minsec = date
+			.toLocaleTimeString()
+			.split(":")
+			.slice(1, 3)
+			.join(":")
+		const time = `${minsec}.${date.getMilliseconds()}`
+
+		chart.data.labels.push(time)
+		newDatasets.forEach((newDataset) => {
+			const index = data.datasets.findIndex(
+				(e) => e.label == newDataset.label
+			)
+			chart.data.datasets[index].data.push(newDataset.data)
+			chart.update()
+		})
 	}
 
-	// const socket = io("ws://localhost:8050", {
-	// 	reconnectionDelayMax: 10000,
-	// })
+	const toggleRecording = () => {
+		if (recording) {
+			socket.emit("session:pause")
+			recording = false
+		} else {
+			socket.emit("session:resume")
+			recording = true
+		}
+	}
 
-	// socket.on("connect", () => {
-	// 	backendReady = true
-	// 	console.log(`Connected to: ${socket.id}`)
-	// })
+	const socket = io("ws://localhost:5000", {
+		reconnectionDelayMax: 10000,
+	})
 
-	// socket.on("disconnect", () => {
-	// 	backendReady = false
-	// 	console.log(`Disconnected from socket`)
-	// })
+	socket.on("connect", () => {
+		backendReady = true
+		console.log(`Connected to: ${socket.id}`)
+	})
+
+	socket.on("disconnect", () => {
+		backendReady = false
+		console.log(`Disconnected from socket`)
+	})
+
+	socket.on("data:update", (data) => {
+		if (recording === false) {
+			return
+		}
+		console.log("Recieved data")
+		console.log(data)
+		addChartData(data)
+		return
+	})
+
+	const newSession = () => {
+		recording = false
+		socket.emit("session:req:new")
+	}
+
+	socket.on("session:res:new", (data) => {
+		session = data.session
+		chart.destroy()
+		createChart()
+		recording = true
+	})
 </script>
 
 <main>
@@ -82,82 +133,43 @@
 		<StatusBar {backendReady} />
 	</div>
 	<div class="ControlCenter">
+		{#if session}
 		<div class="information">
-			<h2>Session #</h2>
-			<div class="statusInfo">
-				<StatusIndicator {backendReady} />
+			<h2>Session #{session ? session : ""}</h2>
+			<!-- <div class="statusInfo">
+				<StatusIndicator ready={false} />
 				<h2>OBD:</h2>
-			</div>
+			</div> -->
 		</div>
 		<div class="controls">
-			<button>New Session</button>
-			<button>Delete Session</button>
+			<button on:click={newSession}>New Session</button>
+			<!-- <button>Delete Session</button> -->
 			<button on:click={toggleRecording}
-				>{recording ? "Stop" : "Start"}</button
+			>{recording ? "Pause" : "Resume"}</button
 			>
 		</div>
+		{/if}
 		<div class="graph">
-			<canvas bind:this={chart} width={400} height={400} />
+			<canvas
+			bind:this={chartCtx}
+			width={400}
+			height={400}
+			class={session ? "" : "is-hidden"}
+			/>
 		</div>
 	</div>
-	<div class="Modal">
-		<div class="card-buffer">
-			<div class="card">
-				<h2>System Override</h2>
-				<p>The system blocks this by default. Please confirm you wish to delete this session.</p>
-				<div class="buttons">
-					<button>Cancel</button>
-					<button>Confirm</button>
-				</div>
-			</div>
-		</div>
-		<div class="modal-bg" />
-	</div>
+	<!-- {#if showModal}
+		<Modal/>
+	{/if} -->
 </main>
 
 <style lang="scss">
-	.Modal {
-		position: absolute;
-		height: 100%;
-		width: 100%;
-		top: 0;
-		left: 0;
-		.modal-bg {
-			height: 100%;
-			width: 100%;
-			background-color: rgba(0, 0, 0, 0.5);
+	canvas {
+		&.is-hidden {
+			visibility: hidden;
 		}
-		.card-buffer {
-			position: absolute;
-			height: 100%;
-			width: 100%;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			.card {
-				display: flex;
-				flex-direction: column;
-				text-align: left;
-				gap: 10px;
-				border-radius: 20px;
-				position: absolute;
-				display: flex;
-				justify-content: center;
-				width: 80%;
-				background-color: #1a1a1a;
-				color: white;
-				padding: 20px;
-			}
-
-			@media (prefers-color-scheme: light) {
-				.card {
-					color: black;
-					background-color: white;
-				}
-			}
-		}
-
 	}
+
 	p,
 	h1,
 	h2 {
@@ -181,11 +193,11 @@
 			flex-direction: column;
 			gap: 10px;
 		}
-		.statusInfo {
-			display: flex;
-			align-items: center;
-			gap: 10px;
-			justify-content: center;
-		}
+		// .statusInfo {
+		// 	display: flex;
+		// 	align-items: center;
+		// 	gap: 10px;
+		// 	justify-content: center;
+		// }
 	}
 </style>

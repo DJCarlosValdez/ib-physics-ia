@@ -1,6 +1,6 @@
 <script>
 	import StatusIndicator from "./StatusIndicator.svelte"
-    let backendReady
+    export let backendReady
 </script>
 
 <div class="StatusBar">

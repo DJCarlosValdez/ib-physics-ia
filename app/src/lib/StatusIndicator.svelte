@@ -1,5 +1,5 @@
 <script>
-	let ready
+	export let ready
 </script>
 
 <span class={`statusIndicator ${ready ? "green" : "red"}`} />
