@@ -150,7 +150,7 @@ if __name__ == "__main__":
     obd_port = str(args.obd_port)
     baudrate = args.baudrate
 
-    # obd_connection = obd.OBD(obd_port, baudrate=baudrate)
+    obd_connection = obd.OBD(obd_port, baudrate=baudrate)
 
     newLogFile()
 
