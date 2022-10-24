@@ -31,8 +31,8 @@ recording = True
 commands = [
     obd.commands.SPEED,
     obd.commands.THROTTLE_POS,
-    obd.commands.FUEL_LEVEL,
-    obd.commands.HYBRID_BATTERY_REMAINING,
+    # obd.commands.FUEL_LEVEL,
+    # obd.commands.HYBRID_BATTERY_REMAINING,
     # bms
 ]
 
@@ -109,7 +109,7 @@ def func1():
     print(f"\n*** Refresh Rate: {refresh_rate} seconds\n")
 
     while True:
-        if recording and obd_connection is not None:
+        if recording:
             timestamp = time.time()
             timestamp_formatted = datetime.fromtimestamp(
                 timestamp).strftime("%H:%M:%S.%f")
