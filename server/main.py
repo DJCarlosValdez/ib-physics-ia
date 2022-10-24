@@ -28,6 +28,8 @@ file = None
 session = None
 recording = True
 
+mode = "1"
+
 commands = [
     obd.commands.SPEED,
     obd.commands.THROTTLE_POS,
@@ -49,7 +51,7 @@ def newLogFile():
 
     os.makedirs("logs", exist_ok=True)
     file = open(f"logs/obd_log-{session}.csv", "w")
-    file.write("Time,Command,Value\n")
+    file.write("Time,Mode,Command,Value\n")
 
 
 def OBDStatusTranslator(status):
@@ -89,6 +91,9 @@ def pause_session(sid):
     global recording
     recording = False
 
+    if file is not None:
+        file.flush()
+
 
 @sio.on("session:resume")
 def resume_session(sid):
@@ -104,6 +109,12 @@ def new_session(sid):
     sio.emit("session:res:new", {"session": session}, room=sid)
 
 
+@sio.on("session:req:mode")
+def new_session(sid, data):
+    global mode
+    mode = data["mode"]
+    sio.emit("session:res:mode", {"mode": data["mode"]}, room=sid)
+
 def func1():
     print("\n--- OBD Logger Starting ---")
     print(f"\n*** Refresh Rate: {refresh_rate} seconds\n")
@@ -117,8 +128,9 @@ def func1():
                 response = obd_connection.query(cmd)
                 response_value = str(response.value)
                 if file is not None:
+                    print("file exists")
                     file.write(
-                        f"{timestamp_formatted},{cmd.name},{response_value}\n")
+                        f"{timestamp_formatted},{mode},{cmd.name},{response_value}\n")
                 sio.emit('data:update', {"datasets": [
                     {"label": cmd.name, "data": response.value}],
                     "time": timestamp})

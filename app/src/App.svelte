@@ -12,10 +12,15 @@
 	let chartCtx
 	let chart
 	let session
+	let mode = "1"
 	let backendReady = false
 	let recording = false
 	let deleteModal = false
 	let showModal = false
+
+	let mode1Box = false
+	let mode2Box = false
+	let mode3Box = false
 
 	const data = {
 		datasets: [
@@ -97,6 +102,14 @@
 	socket.on("connect", () => {
 		backendReady = true
 		console.log(`Connected to: ${socket.id}`)
+
+		// if (recording) {
+		// 	socket.emit("session:resume")
+		// } else {
+		// 	socket.emit("session:pause")
+		// }
+
+		// socket.emit("session:req:mode", { mode: mode })
 	})
 
 	socket.on("disconnect", () => {
@@ -125,6 +138,20 @@
 		createChart()
 		recording = true
 	})
+
+	const modeChange = () => {
+		if (mode1Box === true) {
+			socket.emit("session:req:mode", { mode: "1" })
+		} else if (mode2Box === true) {
+			socket.emit("session:req:mode", { mode: "2" })
+		} else if (mode3Box === true) {
+			socket.emit("session:req:mode", { mode: "3" })
+		}
+	}
+
+	socket.on("session:res:mode", (data) => {
+		mode = data.mode
+	})
 </script>
 
 <main>
@@ -134,27 +161,48 @@
 	</div>
 	<div class="ControlCenter">
 		{#if session}
-		<div class="information">
-			<h2>Session #{session ? session : ""}</h2>
-			<!-- <div class="statusInfo">
+			<div class="information">
+				<h2>Session #{session ? session : ""}</h2>
+				<p>Mode: {mode}</p>
+				<!-- <div class="statusInfo">
 				<StatusIndicator ready={false} />
 				<h2>OBD:</h2>
 			</div> -->
-		</div>
-		<div class="controls">
-			<button on:click={newSession}>New Session</button>
-			<!-- <button>Delete Session</button> -->
-			<button on:click={toggleRecording}
-			>{recording ? "Pause" : "Resume"}</button
-			>
-		</div>
+			</div>
+			<div class="controls">
+				<div class="buttonsWrapper">
+					<button on:click={newSession}>New Session</button>
+					<!-- <button>Delete Session</button> -->
+					<button on:click={toggleRecording}
+						>{recording ? "Pause" : "Resume"}</button
+					>
+				</div>
+				{#if !(mode2Box === true || mode3Box === true)}
+				<div class="checkboxWrapper">
+					<p>Mode 1</p>
+					<input type="checkbox" bind:checked={mode1Box} on:change={modeChange} />
+				</div>
+				{/if}
+				{#if !(mode1Box === true || mode3Box === true)}
+				<div class="checkboxWrapper">
+					<p>Mode 2</p>
+					<input type="checkbox" bind:checked={mode2Box} on:change={modeChange} />
+				</div>
+				{/if}
+				{#if !(mode1Box === true || mode2Box === true)}
+				<div class="checkboxWrapper">
+					<p>Mode 3</p>
+					<input type="checkbox" bind:checked={mode3Box} on:change={modeChange} />
+				</div>
+				{/if}
+			</div>
 		{/if}
 		<div class="graph">
 			<canvas
-			bind:this={chartCtx}
-			width={400}
-			height={400}
-			class={session ? "" : "is-hidden"}
+				bind:this={chartCtx}
+				width={400}
+				height={400}
+				class={session ? "" : "is-hidden"}
 			/>
 		</div>
 	</div>
@@ -184,6 +232,12 @@
 		margin-bottom: 40px;
 	}
 
+	.checkboxWrapper {
+		display: flex;
+		gap: 10px;
+		justify-content: center;
+	}
+
 	.ControlCenter {
 		display: flex;
 		flex-direction: column;
@@ -192,6 +246,17 @@
 			display: flex;
 			flex-direction: column;
 			gap: 10px;
+		}
+
+		.controls {
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+			.buttonsWrapper {
+				display: flex;
+				justify-content: center;
+				gap: 10px;
+			}
 		}
 		// .statusInfo {
 		// 	display: flex;
